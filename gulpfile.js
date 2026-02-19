@@ -1,14 +1,16 @@
 var gulp = require('gulp');
-// Requires the gulp-sass plugin
 var sass = require('gulp-sass');
+var browserSync = require('browser-sync').create();
+require('polyfill-object.fromentries');
 
 gulp.task('sass', function () {
-    return gulp.src('app/scss/**/*.scss') // Gets all files ending with .scss in app/scss and children dirs
+    return gulp.src('app/scss/**/*.scss') // Gets all files ending with .scss in app/scss
         .pipe(sass())
         .pipe(gulp.dest('app/css'))
+        .pipe(browserSync.reload({
+            stream: true
+        }))
 });
-
-var browserSync = require('browser-sync').create();
 
 gulp.task('browserSync', function () {
     browserSync.init({
@@ -30,55 +32,33 @@ gulp.task('watch', ['browserSync', 'sass'], function () {
     gulp.watch('app/js/**/*.js', browserSync.reload);
 });
 
-gulp.task('sass', function () {
-    return gulp.src('app/scss/**/*.scss') // Gets all files ending with .scss in app/scss
-        .pipe(sass())
-        .pipe(gulp.dest('app/css'))
-        .pipe(browserSync.reload({
-            stream: true
-        }))
-});
+// Gulp tasks for building files
 
+var sasss = require('gulp-sass');
 var useref = require('gulp-useref');
-
-gulp.task('useref', function () {
-    return gulp.src('app/*.html')
-        .pipe(useref())
-        .pipe(gulp.dest('dist'))
-});
-
-// Other requires...
 var uglify = require('gulp-uglify');
 var gulpIf = require('gulp-if');
-
-gulp.task('useref', function () {
-    return gulp.src('app/*.html')
-        .pipe(useref())
-        // Minifies only if it's a JavaScript file
-        .pipe(gulpIf('*.js', uglify()))
-        .pipe(gulp.dest('dist'))
-});
-
-var cssnano = require('gulp-cssnano');
-
-gulp.task('useref', function () {
-    return gulp.src('app/*.html')
-        .pipe(useref())
-        .pipe(gulpIf('*.js', uglify()))
-        // Minifies only if it's a CSS file
-        .pipe(gulpIf('*.css', cssnano()))
-        .pipe(gulp.dest('dist'))
-});
-
 var imagemin = require('gulp-imagemin');
-
-gulp.task('images', function () {
-    return gulp.src('app/images/**/*.+(png|jpg|gif|svg)')
-        .pipe(imagemin())
-        .pipe(gulp.dest('dist/images'))
+var cssnano = require('gulp-cssnano');
+var cache = require('gulp-cache');
+var del = require('del');
+var runSequence = require('run-sequence');
+ 
+gulp.task('compress', function () {
+  return gulp.src('app/js/*.js')
+    .pipe(uglify())
+    .on('error', function (err) { console.log( err ) })
+    .pipe(gulp.dest('docs/js'))
 });
 
-var cache = require('gulp-cache');
+gulp.task('useref', function(){
+    return gulp.src('app/**.html')
+        .pipe(useref())
+        .pipe(gulpIf('*.css', cssnano({
+            reduceIdents: false
+          })))
+        .pipe(gulp.dest('docs'))
+});
 
 gulp.task('images', function () {
     return gulp.src('app/images/**/*.+(png|jpg|jpeg|gif|svg)')
@@ -86,25 +66,27 @@ gulp.task('images', function () {
         .pipe(cache(imagemin({
             interlaced: true
         })))
-        .pipe(gulp.dest('dist/images'))
+        .pipe(gulp.dest('docs/images'))
 });
 
-var del = require('del');
-
-gulp.task('clean:dist', function () {
-    return del.sync('dist');
+gulp.task('sasss', function () {
+    return gulp.src('app/scss/**/*.scss') // Gets all files ending with .scss in app/scss and children dirs
+        .pipe(sasss())
+        .pipe(gulp.dest('docs/css'))
 });
 
-var runSequence = require('run-sequence');
+gulp.task('clean:docs', function () {
+    return del.sync('docs');
+});
 
 gulp.task('build', function (callback) {
-    runSequence('clean:dist',
-        ['sass', 'useref', 'images', 'fonts'],
+    runSequence('clean:docs',
+        ['compress', 'sasss', 'useref', 'images'],
         callback
     )
 });
 
-gulp.task('default', function (callback) {
+gulp.task('start', function (callback) {
     runSequence(['sass', 'browserSync', 'watch'],
         callback
     )
