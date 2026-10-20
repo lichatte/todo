@@ -3,7 +3,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   // Tell Vite your source files live inside the 'app' folder
   root: 'app',
-
+  base: './',
   build: {
     // Mimics your Gulp destination task mapping to 'docs' instead of 'dist'
     outDir: '../docs',
